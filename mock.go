@@ -69,8 +69,16 @@ func (m *mock) Publish(subject string, data []byte) error {
 	return m.client.Publish(subject, data)
 }
 
+func (m *mock) PublishWithHeaders(subject string, data []byte, headers Headers) error {
+	return m.client.PublishWithHeaders(subject, data, headers)
+}
+
 func (m *mock) Request(subject string, data []byte, timeout time.Duration) (*Message, error) {
 	return m.client.Request(subject, data, timeout)
+}
+
+func (m *mock) RequestWithHeaders(subject string, data []byte, headers Headers, timeout time.Duration) (*Message, error) {
+	return m.client.RequestWithHeaders(subject, data, headers, timeout)
 }
 
 func (m *mock) Subscribe(subject string, handler func(msg *Message)) (Subscription, error) {

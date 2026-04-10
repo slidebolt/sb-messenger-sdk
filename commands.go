@@ -14,7 +14,6 @@ type Validator interface {
 	Validate() error
 }
 
-
 type Keyed interface {
 	Key() string
 }
@@ -64,18 +63,30 @@ func NewCommands(msg Messenger, lookup CommandLookup) *Commands {
 // Send publishes a command targeting the given entity.
 // Subject: {target.Key()}.command.{cmd.ActionName()}
 func (c *Commands) Send(target Keyed, cmd Action) error {
+	return c.SendWithHeaders(target, cmd, nil)
+}
+
+// SendWithHeaders publishes a command targeting the given entity with optional headers.
+func (c *Commands) SendWithHeaders(target Keyed, cmd Action, headers Headers) error {
 	subject := target.Key() + ".command." + cmd.ActionName()
 	data, err := json.Marshal(cmd)
 	if err != nil {
 		return fmt.Errorf("command: marshal: %w", err)
 	}
-	return c.msg.Publish(subject, data)
+	return c.msg.PublishWithHeaders(subject, data, headers)
 }
 
 // Receive subscribes to commands on subjects matching the pattern.
 // The handler receives the address, action name, and the concrete command
 // (auto-hydrated via the command registry). Unknown actions are skipped.
 func (c *Commands) Receive(pattern string, handler func(addr Address, cmd any)) (Subscription, error) {
+	return c.ReceiveMessage(pattern, func(addr Address, cmd any, _ *Message) {
+		handler(addr, cmd)
+	})
+}
+
+// ReceiveMessage subscribes to commands and passes through the raw message metadata.
+func (c *Commands) ReceiveMessage(pattern string, handler func(addr Address, cmd any, msg *Message)) (Subscription, error) {
 	return c.msg.Subscribe(pattern, func(m *Message) {
 		// Extract action name from subject: ...command.<action>
 		idx := strings.LastIndex(m.Subject, ".command.")
@@ -107,6 +118,6 @@ func (c *Commands) Receive(pattern string, handler func(addr Address, cmd any)) 
 				return
 			}
 		}
-		handler(addr, cmd)
+		handler(addr, cmd, m)
 	})
 }
